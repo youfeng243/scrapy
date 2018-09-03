@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 # Run tests, generate coverage report and open it on a browser
 #
 # Requires: coverage 3.3 or above from https://pypi.python.org/pypi/coverage
