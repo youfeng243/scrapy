@@ -2,32 +2,19 @@ from __future__ import print_function
 import sys, time, random, os, json
 from six.moves.urllib.parse import urlencode
 from subprocess import Popen, PIPE
+
 from twisted.web.server import Site, NOT_DONE_YET
 from twisted.web.resource import Resource
-from twisted.internet import reactor, defer, ssl
-from scrapy import twisted_version
+from twisted.web.static import File
+from twisted.web.test.test_webclient import PayloadResource
+from twisted.web.server import GzipEncoderFactory
+from twisted.web.resource import EncodingResourceWrapper
+from twisted.web.util import redirectTo
+from twisted.internet import reactor, ssl
+from twisted.internet.task import deferLater
+
+
 from scrapy.utils.python import to_bytes, to_unicode
-
-
-if twisted_version < (11, 0, 0):
-    def deferLater(clock, delay, func, *args, **kw):
-        def _cancel_method():
-            _cancel_cb(None)
-            d.errback(Exception())
-
-        def _cancel_cb(result):
-            if cl.active():
-                cl.cancel()
-            return result
-
-        d = defer.Deferred()
-        d.cancel = _cancel_method
-        d.addCallback(lambda ignored: func(*args, **kw))
-        d.addBoth(_cancel_cb)
-        cl = clock.callLater(delay, d.callback, None)
-        return d
-else:
-    from twisted.internet.task import deferLater
 
 
 def getarg(request, name, default=None, type=None):
@@ -134,6 +121,17 @@ class Echo(LeafResource):
             'body': to_unicode(request.content.read()),
         }
         return to_bytes(json.dumps(output))
+    render_POST = render_GET
+
+
+class RedirectTo(LeafResource):
+
+    def render(self, request):
+        goto = getarg(request, b'goto', b'/')
+        # we force the body content, otherwise Twisted redirectTo()
+        # returns HTML with <meta http-equiv="refresh"
+        redirectTo(goto, request)
+        return b'redirecting...'
 
 
 class Partial(LeafResource):
@@ -174,13 +172,14 @@ class Root(Resource):
         self.putChild(b"drop", Drop())
         self.putChild(b"raw", Raw())
         self.putChild(b"echo", Echo())
-
-        if twisted_version > (12, 3, 0):
-            from twisted.web.test.test_webclient import PayloadResource
-            from twisted.web.server import GzipEncoderFactory
-            from twisted.web.resource import EncodingResourceWrapper
-            self.putChild(b"payload", PayloadResource())
-            self.putChild(b"xpayload", EncodingResourceWrapper(PayloadResource(), [GzipEncoderFactory()]))
+        self.putChild(b"payload", PayloadResource())
+        self.putChild(b"xpayload", EncodingResourceWrapper(PayloadResource(), [GzipEncoderFactory()]))
+        try:
+            from tests import tests_datadir
+            self.putChild(b"files", File(os.path.join(tests_datadir, 'test_site/files/')))
+        except:
+            pass
+        self.putChild(b"redirect-to", RedirectTo())
 
     def getChild(self, name, request):
         return self
@@ -193,9 +192,15 @@ class MockServer():
 
     def __enter__(self):
         from scrapy.utils.test import get_testenv
+
         self.proc = Popen([sys.executable, '-u', '-m', 'tests.mockserver'],
                           stdout=PIPE, env=get_testenv())
-        self.proc.stdout.readline()
+        http_address = self.proc.stdout.readline().strip().decode('ascii')
+        https_address = self.proc.stdout.readline().strip().decode('ascii')
+
+        self.http_address = http_address
+        self.https_address = https_address
+
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
@@ -203,8 +208,14 @@ class MockServer():
         self.proc.wait()
         time.sleep(0.2)
 
+    def url(self, path, is_secure=False):
+        host = self.http_address.replace('0.0.0.0', '127.0.0.1')
+        if is_secure:
+            host = self.https_address
+        return host + path
 
-def ssl_context_factory(keyfile='keys/cert.pem', certfile='keys/cert.pem'):
+
+def ssl_context_factory(keyfile='keys/localhost.key', certfile='keys/localhost.crt'):
     return ssl.DefaultOpenSSLContextFactory(
          os.path.join(os.path.dirname(__file__), keyfile),
          os.path.join(os.path.dirname(__file__), certfile),
@@ -214,14 +225,17 @@ def ssl_context_factory(keyfile='keys/cert.pem', certfile='keys/cert.pem'):
 if __name__ == "__main__":
     root = Root()
     factory = Site(root)
-    httpPort = reactor.listenTCP(8998, factory)
+    httpPort = reactor.listenTCP(0, factory)
     contextFactory = ssl_context_factory()
-    httpsPort = reactor.listenSSL(8999, factory, contextFactory)
+    httpsPort = reactor.listenSSL(0, factory, contextFactory)
 
     def print_listening():
         httpHost = httpPort.getHost()
         httpsHost = httpsPort.getHost()
-        print("Mock server running at http://%s:%d and https://%s:%d" % (
-            httpHost.host, httpHost.port, httpsHost.host, httpsHost.port))
+        httpAddress = 'http://%s:%d' % (httpHost.host, httpHost.port)
+        httpsAddress = 'https://%s:%d' % (httpsHost.host, httpsHost.port)
+        print(httpAddress)
+        print(httpsAddress)
+
     reactor.callWhenRunning(print_listening)
     reactor.run()

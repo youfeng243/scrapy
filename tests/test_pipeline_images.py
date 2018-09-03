@@ -1,8 +1,8 @@
-import os
+import io
 import hashlib
 import random
 import warnings
-from tempfile import mkdtemp, TemporaryFile
+from tempfile import mkdtemp
 from shutil import rmtree
 
 from twisted.trial import unittest
@@ -81,20 +81,28 @@ class ImagesPipelineTestCase(unittest.TestCase):
         COLOUR = (0, 127, 255)
         im = _create_image('JPEG', 'RGB', SIZE, COLOUR)
         converted, _ = self.pipeline.convert_image(im)
-        self.assertEquals(converted.mode, 'RGB')
-        self.assertEquals(converted.getcolors(), [(10000, COLOUR)])
+        self.assertEqual(converted.mode, 'RGB')
+        self.assertEqual(converted.getcolors(), [(10000, COLOUR)])
 
         # check that thumbnail keep image ratio
         thumbnail, _ = self.pipeline.convert_image(converted, size=(10, 25))
-        self.assertEquals(thumbnail.mode, 'RGB')
-        self.assertEquals(thumbnail.size, (10, 10))
+        self.assertEqual(thumbnail.mode, 'RGB')
+        self.assertEqual(thumbnail.size, (10, 10))
 
         # transparency case: RGBA and PNG
         COLOUR = (0, 127, 255, 50)
         im = _create_image('PNG', 'RGBA', SIZE, COLOUR)
         converted, _ = self.pipeline.convert_image(im)
-        self.assertEquals(converted.mode, 'RGB')
-        self.assertEquals(converted.getcolors(), [(10000, (205, 230, 255))])
+        self.assertEqual(converted.mode, 'RGB')
+        self.assertEqual(converted.getcolors(), [(10000, (205, 230, 255))])
+
+        # transparency case with palette: P and PNG
+        COLOUR = (0, 127, 255, 50)
+        im = _create_image('PNG', 'RGBA', SIZE, COLOUR)
+        im = im.convert('P')
+        converted, _ = self.pipeline.convert_image(im)
+        self.assertEqual(converted.mode, 'RGB')
+        self.assertEqual(converted.getcolors(), [(10000, (205, 230, 255))])
 
 
 class DeprecatedImagesPipeline(ImagesPipeline):
@@ -244,7 +252,7 @@ class ImagesPipelineTestCaseCustomSettings(unittest.TestCase):
             return "".join([chr(random.randint(97, 123)) for _ in range(10)])
 
         settings = {
-            "IMAGES_EXPIRES": random.randint(1, 1000),
+            "IMAGES_EXPIRES": random.randint(100, 1000),
             "IMAGES_STORE": self.tempdir,
             "IMAGES_RESULT_FIELD": random_string(),
             "IMAGES_URLS_FIELD": random_string(),
@@ -393,8 +401,9 @@ class ImagesPipelineTestCaseCustomSettings(unittest.TestCase):
             self.assertEqual(getattr(pipeline_cls, pipe_attr.lower()),
                              expected_value)
 
+
 def _create_image(format, *a, **kw):
-    buf = TemporaryFile()
+    buf = io.BytesIO()
     Image.new(*a, **kw).save(buf, format)
     buf.seek(0)
     return Image.open(buf)

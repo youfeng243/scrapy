@@ -1,6 +1,7 @@
 import sys
 import re
 from functools import wraps
+from inspect import getmembers
 from unittest import TestCase
 
 from scrapy.http import Request
@@ -17,7 +18,7 @@ class ContractsManager(object):
 
     def tested_methods_from_spidercls(self, spidercls):
         methods = []
-        for key, value in vars(spidercls).items():
+        for key, value in getmembers(spidercls):
             if (callable(value) and value.__doc__ and
                     re.search(r'^\s*@', value.__doc__, re.MULTILINE)):
                 methods.append(key)
@@ -84,7 +85,7 @@ class ContractsManager(object):
 
         def eb_wrapper(failure):
             case = _create_testcase(method, 'errback')
-            exc_info = failure.value, failure.type, failure.getTracebackObject()
+            exc_info = failure.type, failure.value, failure.getTracebackObject()
             results.addError(case, exc_info)
 
         request.callback = cb_wrapper

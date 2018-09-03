@@ -26,15 +26,26 @@ If you're already familiar with other languages, and want to learn Python
 quickly, we recommend reading through `Dive Into Python 3`_.  Alternatively,
 you can follow the `Python Tutorial`_.
 
-If you're new to programming and want to start with Python, you may find useful
-the online book `Learn Python The Hard Way`_. You can also take a look at `this
-list of Python resources for non-programmers`_.
+If you're new to programming and want to start with Python, the following books
+may be useful to you: 
+
+* `Automate the Boring Stuff With Python`_
+
+* `How To Think Like a Computer Scientist`_ 
+
+* `Learn Python 3 The Hard Way`_ 
+
+You can also take a look at `this list of Python resources for non-programmers`_,
+as well as the `suggested resources in the learnpython-subreddit`_. 
 
 .. _Python: https://www.python.org/
 .. _this list of Python resources for non-programmers: https://wiki.python.org/moin/BeginnersGuide/NonProgrammers
 .. _Dive Into Python 3: http://www.diveintopython3.net
 .. _Python Tutorial: https://docs.python.org/3/tutorial
-.. _Learn Python The Hard Way: http://learnpythonthehardway.org/book/
+.. _Automate the Boring Stuff With Python: https://automatetheboringstuff.com/
+.. _How To Think Like a Computer Scientist: http://openbookproject.net/thinkcs/python/english3e/
+.. _Learn Python 3 The Hard Way: https://learnpythonthehardway.org/python3/
+.. _suggested resources in the learnpython-subreddit: https://www.reddit.com/r/learnpython/wiki/index#wiki_new_to_python.3F
 
 
 Creating a project
@@ -54,6 +65,8 @@ This will create a ``tutorial`` directory with the following contents::
             __init__.py
 
             items.py          # project items definition file
+            
+            middlewares.py    # project middlewares file
 
             pipelines.py      # project pipelines file
 
@@ -130,15 +143,15 @@ will send some requests for the ``quotes.toscrape.com`` domain. You will get an 
 similar to this::
 
     ... (omitted for brevity)
-    2016-09-20 14:48:00 [scrapy] INFO: Spider opened
-    2016-09-20 14:48:00 [scrapy] INFO: Crawled 0 pages (at 0 pages/min), scraped 0 items (at 0 items/min)
-    2016-09-20 14:48:00 [scrapy] DEBUG: Telnet console listening on 127.0.0.1:6023
-    2016-09-20 14:48:00 [scrapy] DEBUG: Crawled (404) <GET http://quotes.toscrape.com/robots.txt> (referer: None)
-    2016-09-20 14:48:00 [scrapy] DEBUG: Crawled (200) <GET http://quotes.toscrape.com/page/1/> (referer: None)
-    2016-09-20 14:48:01 [quotes] DEBUG: Saved file quotes-1.html
-    2016-09-20 14:48:01 [scrapy] DEBUG: Crawled (200) <GET http://quotes.toscrape.com/page/2/> (referer: None)
-    2016-09-20 14:48:01 [quotes] DEBUG: Saved file quotes-2.html
-    2016-09-20 14:48:01 [scrapy] INFO: Closing spider (finished)
+    2016-12-16 21:24:05 [scrapy.core.engine] INFO: Spider opened
+    2016-12-16 21:24:05 [scrapy.extensions.logstats] INFO: Crawled 0 pages (at 0 pages/min), scraped 0 items (at 0 items/min)
+    2016-12-16 21:24:05 [scrapy.extensions.telnet] DEBUG: Telnet console listening on 127.0.0.1:6023
+    2016-12-16 21:24:05 [scrapy.core.engine] DEBUG: Crawled (404) <GET http://quotes.toscrape.com/robots.txt> (referer: None)
+    2016-12-16 21:24:05 [scrapy.core.engine] DEBUG: Crawled (200) <GET http://quotes.toscrape.com/page/1/> (referer: None)
+    2016-12-16 21:24:05 [scrapy.core.engine] DEBUG: Crawled (200) <GET http://quotes.toscrape.com/page/2/> (referer: None)
+    2016-12-16 21:24:05 [quotes] DEBUG: Saved file quotes-1.html
+    2016-12-16 21:24:05 [quotes] DEBUG: Saved file quotes-2.html
+    2016-12-16 21:24:05 [scrapy.core.engine] INFO: Closing spider (finished)
     ...
 
 Now, check the files in the current directory. You should notice that two new
@@ -212,7 +225,7 @@ using the shell :ref:`Scrapy shell <topics-shell>`. Run::
 You will see something like::
 
     [ ... Scrapy log here ... ]
-    2016-09-19 12:09:27 [scrapy] DEBUG: Crawled (200) <GET http://quotes.toscrape.com/page/1/> (referer: None)
+    2016-09-19 12:09:27 [scrapy.core.engine] DEBUG: Crawled (200) <GET http://quotes.toscrape.com/page/1/> (referer: None)
     [s] Available Scrapy objects:
     [s]   scrapy     scrapy module (contains scrapy.Request, scrapy.Selector, etc)
     [s]   crawler    <scrapy.crawler.Crawler object at 0x7fa91d888c90>
@@ -225,7 +238,7 @@ You will see something like::
     [s]   shelp()           Shell help (print this help)
     [s]   fetch(req_or_url) Fetch request (or URL) and update local objects
     [s]   view(response)    View response in a browser
-    >>> 
+    >>>
 
 Using the shell, you can try selecting elements using `CSS`_ with the response
 object::
@@ -285,8 +298,7 @@ expressions`::
 
 In order to find the proper CSS selectors to use, you might find useful opening
 the response page from the shell in your web browser using ``view(response)``.
-You can use your browser developer tools or extensions like Firebug (see
-sections about :ref:`topics-firebug` and :ref:`topics-firefox`).
+You can use your browser developer tools (see section about :ref:`topics-developer-tools`).
 
 `Selector Gadget`_ is also a nice tool to quickly find CSS selector for
 visually selected elements, which works in many browsers.
@@ -399,7 +411,7 @@ quotes elements and put them together into a Python dictionary::
     >>>
 
 Extracting data in our spider
-------------------------------
+-----------------------------
 
 Let's get back to our spider. Until now, it doesn't extract any data in
 particular, just saves the whole HTML page to a local file. Let's integrate the
@@ -423,15 +435,15 @@ in the callback, as you can see below::
             for quote in response.css('div.quote'):
                 yield {
                     'text': quote.css('span.text::text').extract_first(),
-                    'author': quote.css('span small::text').extract_first(),
+                    'author': quote.css('small.author::text').extract_first(),
                     'tags': quote.css('div.tags a.tag::text').extract(),
                 }
 
 If you run this spider, it will output the extracted data with the log::
 
-    2016-09-19 18:57:19 [scrapy] DEBUG: Scraped from <200 http://quotes.toscrape.com/page/1/>
+    2016-09-19 18:57:19 [scrapy.core.scraper] DEBUG: Scraped from <200 http://quotes.toscrape.com/page/1/>
     {'tags': ['life', 'love'], 'author': 'André Gide', 'text': '“It is better to be hated for what you are than to be loved for what you are not.”'}
-    2016-09-19 18:57:19 [scrapy] DEBUG: Scraped from <200 http://quotes.toscrape.com/page/1/>
+    2016-09-19 18:57:19 [scrapy.core.scraper] DEBUG: Scraped from <200 http://quotes.toscrape.com/page/1/>
     {'tags': ['edison', 'failure', 'inspirational', 'paraphrased'], 'author': 'Thomas A. Edison', 'text': "“I have not failed. I've just found 10,000 ways that won't work.”"}
 
 
@@ -452,7 +464,7 @@ For historic reasons, Scrapy appends to a given file instead of overwriting
 its contents. If you run this command twice without removing the file
 before the second time, you'll end up with a broken JSON file.
 
-You can also used other formats, like `JSON Lines`_::
+You can also use other formats, like `JSON Lines`_::
 
     scrapy crawl quotes -o quotes.jl
 
@@ -522,7 +534,7 @@ page, extracting data from it::
             for quote in response.css('div.quote'):
                 yield {
                     'text': quote.css('span.text::text').extract_first(),
-                    'author': quote.css('span small::text').extract_first(),
+                    'author': quote.css('small.author::text').extract_first(),
                     'tags': quote.css('div.tags a.tag::text').extract(),
                 }
 
@@ -551,12 +563,64 @@ In our example, it creates a sort of loop, following all the links to the next p
 until it doesn't find one -- handy for crawling blogs, forums and other sites with
 pagination.
 
+
+.. _response-follow-example:
+
+A shortcut for creating Requests
+--------------------------------
+
+As a shortcut for creating Request objects you can use
+:meth:`response.follow <scrapy.http.TextResponse.follow>`::
+
+    import scrapy
+
+
+    class QuotesSpider(scrapy.Spider):
+        name = "quotes"
+        start_urls = [
+            'http://quotes.toscrape.com/page/1/',
+        ]
+
+        def parse(self, response):
+            for quote in response.css('div.quote'):
+                yield {
+                    'text': quote.css('span.text::text').extract_first(),
+                    'author': quote.css('span small::text').extract_first(),
+                    'tags': quote.css('div.tags a.tag::text').extract(),
+                }
+
+            next_page = response.css('li.next a::attr(href)').extract_first()
+            if next_page is not None:
+                yield response.follow(next_page, callback=self.parse)
+
+Unlike scrapy.Request, ``response.follow`` supports relative URLs directly - no
+need to call urljoin. Note that ``response.follow`` just returns a Request
+instance; you still have to yield this Request.
+
+You can also pass a selector to ``response.follow`` instead of a string;
+this selector should extract necessary attributes::
+
+    for href in response.css('li.next a::attr(href)'):
+        yield response.follow(href, callback=self.parse)
+
+For ``<a>`` elements there is a shortcut: ``response.follow`` uses their href
+attribute automatically. So the code can be shortened further::
+
+    for a in response.css('li.next a'):
+        yield response.follow(a, callback=self.parse)
+
+.. note::
+
+    ``response.follow(response.css('li.next a'))`` is not valid because
+    ``response.css`` returns a list-like object with selectors for all results,
+    not a single selector. A ``for`` loop like in the example above, or
+    ``response.follow(response.css('li.next a')[0])`` is fine.
+
 More examples and patterns
 --------------------------
 
 Here is another spider that illustrates callbacks and following links,
 this time for scraping author information::
-
 
     import scrapy
 
@@ -568,15 +632,12 @@ this time for scraping author information::
 
         def parse(self, response):
             # follow links to author pages
-            for href in response.css('.author+a::attr(href)').extract():
-                yield scrapy.Request(response.urljoin(href),
-                                     callback=self.parse_author)
+            for href in response.css('.author + a::attr(href)'):
+                yield response.follow(href, self.parse_author)
 
             # follow pagination links
-            next_page = response.css('li.next a::attr(href)').extract_first()
-            if next_page is not None:
-                next_page = response.urljoin(next_page)
-                yield scrapy.Request(next_page, callback=self.parse)
+            for href in response.css('li.next a::attr(href)'):
+                yield response.follow(href, self.parse)
 
         def parse_author(self, response):
             def extract_with_css(query):
@@ -591,6 +652,9 @@ this time for scraping author information::
 This spider will start from the main page, it will follow all the links to the
 authors pages calling the ``parse_author`` callback for each of them, and also
 the pagination links with the ``parse`` callback as we saw before.
+
+Here we're passing callbacks to ``response.follow`` as positional arguments
+to make the code shorter; it also works for ``scrapy.Request``.
 
 The ``parse_author`` callback defines a helper function to extract and cleanup the
 data from a CSS query and yields the Python dict with the author data.
@@ -624,7 +688,7 @@ option when running them::
     scrapy crawl quotes -o quotes-humor.json -a tag=humor
 
 These arguments are passed to the Spider's ``__init__`` method and become
-spider attributes by default.  
+spider attributes by default.
 
 In this example, the value provided for the ``tag`` argument will be available
 via ``self.tag``. You can use this to make your spider fetch only quotes
@@ -647,13 +711,12 @@ with a specific tag, building the URL based on the argument::
             for quote in response.css('div.quote'):
                 yield {
                     'text': quote.css('span.text::text').extract_first(),
-                    'author': quote.css('span small a::text').extract_first(),
+                    'author': quote.css('small.author::text').extract_first(),
                 }
 
             next_page = response.css('li.next a::attr(href)').extract_first()
             if next_page is not None:
-                next_page = response.urljoin(next_page)
-                yield scrapy.Request(next_page, self.parse)
+                yield response.follow(next_page, self.parse)
 
 
 If you pass the ``tag=humor`` argument to this spider, you'll notice that it

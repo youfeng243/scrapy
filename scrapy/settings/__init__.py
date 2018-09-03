@@ -1,13 +1,9 @@
 import six
 import json
 import copy
-import warnings
 from collections import MutableMapping
 from importlib import import_module
 from pprint import pformat
-
-from scrapy.utils.deprecate import create_deprecated_class
-from scrapy.exceptions import ScrapyDeprecationWarning
 
 from . import default_settings
 
@@ -114,8 +110,8 @@ class BaseSettings(MutableMapping):
         """
         Get a setting value as a boolean.
 
-        ``1``, ``'1'``, and ``True`` return ``True``, while ``0``, ``'0'``,
-        ``False`` and ``None`` return ``False``.
+        ``1``, ``'1'``, `True`` and ``'True'`` return ``True``,
+        while ``0``, ``'0'``, ``False``, ``'False'`` and ``None`` return ``False``.
 
         For example, settings populated through environment variables set to
         ``'0'`` will return ``False`` when using this method.
@@ -126,7 +122,17 @@ class BaseSettings(MutableMapping):
         :param default: the value to return if no setting is found
         :type default: any
         """
-        return bool(int(self.get(name, default)))
+        got = self.get(name, default)
+        try:
+            return bool(int(got))
+        except ValueError:
+            if got in ("True", "true"):
+                return True
+            if got in ("False", "false"):
+                return False
+            raise ValueError("Supported values for boolean settings "
+                             "are 0/1, True/False, '0'/'1', "
+                             "'True'/'False' and 'true'/'false'")
 
     def getint(self, name, default=0):
         """
@@ -395,30 +401,6 @@ class BaseSettings(MutableMapping):
         else:
             p.text(pformat(self.copy_to_dict()))
 
-    @property
-    def overrides(self):
-        warnings.warn("`Settings.overrides` attribute is deprecated and won't "
-                      "be supported in Scrapy 0.26, use "
-                      "`Settings.set(name, value, priority='cmdline')` instead",
-                      category=ScrapyDeprecationWarning, stacklevel=2)
-        try:
-            o = self._overrides
-        except AttributeError:
-            self._overrides = o = _DictProxy(self, 'cmdline')
-        return o
-
-    @property
-    def defaults(self):
-        warnings.warn("`Settings.defaults` attribute is deprecated and won't "
-                      "be supported in Scrapy 0.26, use "
-                      "`Settings.set(name, value, priority='default')` instead",
-                      category=ScrapyDeprecationWarning, stacklevel=2)
-        try:
-            o = self._defaults
-        except AttributeError:
-            self._defaults = o = _DictProxy(self, 'default')
-        return o
-
 
 class _DictProxy(MutableMapping):
 
@@ -467,29 +449,6 @@ class Settings(BaseSettings):
             if isinstance(val, dict):
                 self.set(name, BaseSettings(val, 'default'), 'default')
         self.update(values, priority)
-
-
-class CrawlerSettings(Settings):
-
-    def __init__(self, settings_module=None, **kw):
-        self.settings_module = settings_module
-        Settings.__init__(self, **kw)
-
-    def __getitem__(self, opt_name):
-        if opt_name in self.overrides:
-            return self.overrides[opt_name]
-        if self.settings_module and hasattr(self.settings_module, opt_name):
-            return getattr(self.settings_module, opt_name)
-        if opt_name in self.defaults:
-            return self.defaults[opt_name]
-        return Settings.__getitem__(self, opt_name)
-
-    def __str__(self):
-        return "<CrawlerSettings module=%r>" % self.settings_module
-
-CrawlerSettings = create_deprecated_class(
-    'CrawlerSettings', CrawlerSettings,
-    new_class_path='scrapy.settings.Settings')
 
 
 def iter_default_settings():

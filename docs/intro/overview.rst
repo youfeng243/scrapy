@@ -40,8 +40,7 @@ http://quotes.toscrape.com, following the pagination::
 
             next_page = response.css('li.next a::attr("href")').extract_first()
             if next_page is not None:
-                next_page = response.urljoin(next_page)
-                yield scrapy.Request(next_page, callback=self.parse)
+                yield response.follow(next_page, self.parse)
 
 
 Put this in a text file, name it to something like ``quotes_spider.py``
@@ -161,8 +160,8 @@ The next steps for you are to :ref:`install Scrapy <intro-install>`,
 a full-blown Scrapy project and `join the community`_. Thanks for your
 interest!
 
-.. _join the community: http://scrapy.org/community/
+.. _join the community: https://scrapy.org/community/
 .. _web scraping: https://en.wikipedia.org/wiki/Web_scraping
 .. _Amazon Associates Web Services: https://affiliate-program.amazon.com/gp/advertising/api/detail/main.html
 .. _Amazon S3: https://aws.amazon.com/s3/
-.. _Sitemaps: http://www.sitemaps.org
+.. _Sitemaps: https://www.sitemaps.org/index.html

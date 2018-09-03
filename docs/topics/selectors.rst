@@ -36,7 +36,7 @@ documents.
 For a complete reference of the selectors API see
 :ref:`Selector reference <topics-selectors-ref>`
 
-.. _BeautifulSoup: http://www.crummy.com/software/BeautifulSoup/
+.. _BeautifulSoup: https://www.crummy.com/software/BeautifulSoup/
 .. _lxml: http://lxml.de/
 .. _ElementTree: https://docs.python.org/2/library/xml.etree.elementtree.html
 .. _cssselect: https://pypi.python.org/pypi/cssselect/
@@ -86,7 +86,7 @@ To explain how to use the selectors we'll use the `Scrapy shell` (which
 provides interactive testing) and an example page located in the Scrapy
 documentation server:
 
-    http://doc.scrapy.org/en/latest/_static/selectors-sample1.html
+    https://doc.scrapy.org/en/latest/_static/selectors-sample1.html
 
 .. _topics-selectors-htmlcode:
 
@@ -99,7 +99,7 @@ Here's its HTML code:
 
 First, let's open the shell::
 
-    scrapy shell http://doc.scrapy.org/en/latest/_static/selectors-sample1.html
+    scrapy shell https://doc.scrapy.org/en/latest/_static/selectors-sample1.html
 
 Then, after the shell loads, you'll have the response available as ``response``
 shell variable, and its attached selector in ``response.selector`` attribute.
@@ -282,6 +282,40 @@ For more details about relative XPaths see the `Location Paths`_ section in the
 XPath specification.
 
 .. _Location Paths: https://www.w3.org/TR/xpath#location-paths
+
+.. _topics-selectors-xpath-variables:
+
+Variables in XPath expressions
+------------------------------
+
+XPath allows you to reference variables in your XPath expressions, using
+the ``$somevariable`` syntax. This is somewhat similar to parameterized
+queries or prepared statements in the SQL world where you replace
+some arguments in your queries with placeholders like ``?``,
+which are then substituted with values passed with the query.
+
+Here's an example to match an element based on its "id" attribute value,
+without hard-coding it (that was shown previously)::
+
+    >>> # `$val` used in the expression, a `val` argument needs to be passed
+    >>> response.xpath('//div[@id=$val]/a/text()', val='images').extract_first()
+    u'Name: My image 1 '
+
+Here's another example, to find the "id" attribute of a ``<div>`` tag containing
+five ``<a>`` children (here we pass the value ``5`` as an integer)::
+
+    >>> response.xpath('//div[count(a)=$cnt]/@id', cnt=5).extract_first()
+    u'images'
+
+All variable references must have a binding value when calling ``.xpath()``
+(otherwise you'll get a ``ValueError: XPath error:`` exception).
+This is done by passing as many named arguments as necessary.
+
+`parsel`_, the library powering Scrapy selectors, has more details and examples
+on `XPath variables`_.
+
+.. _parsel: https://parsel.readthedocs.io/
+.. _XPath variables: https://parsel.readthedocs.io/en/latest/usage.html#variables-in-xpath-expressions
 
 Using EXSLT extensions
 ----------------------
@@ -559,6 +593,9 @@ Built-in Selectors reference
 .. module:: scrapy.selector
    :synopsis: Selector class
 
+Selector objects
+----------------
+
 .. class:: Selector(response=None, text=None, type=None)
 
   An instance of :class:`Selector` is a wrapper over response to select
@@ -626,6 +663,10 @@ Built-in Selectors reference
      ``regex`` can be either a compiled regular expression or a string which
      will be compiled to a regular expression using ``re.compile(regex)``
 
+    .. note::
+
+        Note that ``re()`` and ``re_first()`` both decode HTML entities (except ``&lt;`` and ``&amp;``).
+
   .. method:: register_namespace(prefix, uri)
 
      Register the given namespace to be used in this :class:`Selector`.
@@ -676,13 +717,9 @@ SelectorList objects
        Call the ``.re()`` method for each element in this list and return
        their results flattened, as a list of unicode strings.
 
-   .. method:: __nonzero__()
-
-        returns True if the list is not empty, False otherwise.
-
 
 Selector examples on HTML response
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+----------------------------------
 
 Here's a couple of :class:`Selector` examples to illustrate several concepts.
 In all cases, we assume there is already a :class:`Selector` instantiated with
@@ -707,7 +744,7 @@ a :class:`~scrapy.http.HtmlResponse` object like this::
           print node.xpath("@class").extract()
 
 Selector examples on XML response
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+---------------------------------
 
 Here's a couple of examples to illustrate several concepts. In both cases we
 assume there is already a :class:`Selector` instantiated with an
@@ -729,7 +766,7 @@ assume there is already a :class:`Selector` instantiated with an
 .. _removing-namespaces:
 
 Removing namespaces
-~~~~~~~~~~~~~~~~~~~
+-------------------
 
 When dealing with scraping projects, it is often quite convenient to get rid of
 namespaces altogether and just work with element names, to write more

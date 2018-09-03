@@ -15,6 +15,9 @@ def _embed_ipython_shell(namespace={}, banner=''):
         config = load_default_config()
         # Always use .instace() to ensure _instance propagation to all parents
         # this is needed for <TAB> completion works well for new imports
+        # and clear the instance to always have the fresh env
+        # on repeated breaks like with inspect_response()
+        InteractiveShellEmbed.clear_instance()
         shell = InteractiveShellEmbed.instance(
             banner1=banner, user_ns=namespace, config=config)
         shell()
@@ -26,6 +29,15 @@ def _embed_bpython_shell(namespace={}, banner=''):
     @wraps(_embed_bpython_shell)
     def wrapper(namespace=namespace, banner=''):
         bpython.embed(locals_=namespace, banner=banner)
+    return wrapper
+
+def _embed_ptpython_shell(namespace={}, banner=''):
+    """Start a ptpython shell"""
+    import ptpython.repl
+    @wraps(_embed_ptpython_shell)
+    def wrapper(namespace=namespace, banner=''):
+        print(banner)
+        ptpython.repl.embed(locals=namespace)
     return wrapper
 
 def _embed_standard_shell(namespace={}, banner=''):
@@ -44,9 +56,10 @@ def _embed_standard_shell(namespace={}, banner=''):
     return wrapper
 
 DEFAULT_PYTHON_SHELLS = OrderedDict([
+    ('ptpython', _embed_ptpython_shell),
     ('ipython', _embed_ipython_shell),
     ('bpython', _embed_bpython_shell),
-    ( 'python', _embed_standard_shell),
+    ('python', _embed_standard_shell),
 ])
 
 def get_shell_embed_func(shells=None, known_shells=None):

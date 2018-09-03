@@ -81,11 +81,14 @@ scrapy.Spider
        specified in this list (or their subdomains) won't be followed if
        :class:`~scrapy.spidermiddlewares.offsite.OffsiteMiddleware` is enabled.
 
+       Let's say your target url is ``https://www.example.com/1.html``,
+       then add ``'example.com'`` to the list.
+
    .. attribute:: start_urls
 
        A list of URLs where the spider will begin to crawl from, when no
        particular URLs are specified. So, the first pages downloaded will be those
-       listed here. The subsequent URLs will be generated successively from data
+       listed here. The subsequent :class:`~scrapy.http.Request` will be generated successively from data
        contained in the start URLs.
 
    .. attribute:: custom_settings
@@ -144,16 +147,12 @@ scrapy.Spider
    .. method:: start_requests()
 
        This method must return an iterable with the first Requests to crawl for
-       this spider.
+       this spider. It is called by Scrapy when the spider is opened for
+       scraping. Scrapy calls it only once, so it is safe to implement
+       :meth:`start_requests` as a generator.
 
-       This is the method called by Scrapy when the spider is opened for
-       scraping when no particular URLs are specified. If particular URLs are
-       specified, the :meth:`make_requests_from_url` is used instead to create
-       the Requests. This method is also called only once from Scrapy, so it's
-       safe to implement it as a generator.
-
-       The default implementation uses :meth:`make_requests_from_url` to
-       generate Requests for each url in :attr:`start_urls`.
+       The default implementation generates ``Request(url, dont_filter=True)``
+       for each url in :attr:`start_urls`.
 
        If you want to change the Requests used to start scraping a domain, this is
        the method to override. For example, if you need to start by logging in using
@@ -171,18 +170,6 @@ scrapy.Spider
                    # here you would extract links to follow and return Requests for
                    # each of them, with another callback
                    pass
-
-   .. method:: make_requests_from_url(url)
-
-       A method that receives a URL and returns a :class:`~scrapy.http.Request`
-       object (or a list of :class:`~scrapy.http.Request` objects) to scrape. This
-       method is used to construct the initial requests in the
-       :meth:`start_requests` method, and is typically used to convert urls to
-       requests.
-
-       Unless overridden, this method returns Requests with the :meth:`parse`
-       method as their callback function, and with dont_filter parameter enabled
-       (see :class:`~scrapy.http.Request` class for more info).
 
    .. method:: parse(response)
 
@@ -296,6 +283,37 @@ Spiders can access arguments in their `__init__` methods::
             super(MySpider, self).__init__(*args, **kwargs)
             self.start_urls = ['http://www.example.com/categories/%s' % category]
             # ...
+
+The default `__init__` method will take any spider arguments
+and copy them to the spider as attributes.
+The above example can also be written as follows::
+
+    import scrapy
+
+    class MySpider(scrapy.Spider):
+        name = 'myspider'
+
+        def start_requests(self):
+            yield scrapy.Request('http://www.example.com/categories/%s' % self.category)
+
+Keep in mind that spider arguments are only strings.
+The spider will not do any parsing on its own.
+If you were to set the `start_urls` attribute from the command line,
+you would have to parse it on your own into a list
+using something like
+`ast.literal_eval <https://docs.python.org/library/ast.html#ast.literal_eval>`_
+or `json.loads <https://docs.python.org/library/json.html#json.loads>`_
+and then set it as an attribute.
+Otherwise, you would cause iteration over a `start_urls` string
+(a very common python pitfall)
+resulting in each character being seen as a separate url.
+
+A valid use case is to set the http auth credentials
+used by :class:`~scrapy.downloadermiddlewares.httpauth.HttpAuthMiddleware`
+or the user agent
+used by :class:`~scrapy.downloadermiddlewares.useragent.UserAgentMiddleware`::
+
+    scrapy crawl myspider -a http_user=myuser -a http_pass=mypassword -a user_agent=mybot
 
 Spider arguments can also be passed through the Scrapyd ``schedule.json`` API.
 See `Scrapyd documentation`_.
@@ -560,8 +578,7 @@ CSVFeedSpider
 
    .. attribute:: headers
 
-       A list of the rows contained in the file CSV feed which will be used to
-       extract fields from it.
+       A list of the column names in the CSV file.
 
    .. method:: parse_row(response, row)
 
@@ -734,8 +751,8 @@ Combine SitemapSpider with other sources of urls::
         def parse_other(self, response):
             pass # ... scrape other here ...
 
-.. _Sitemaps: http://www.sitemaps.org
-.. _Sitemap index files: http://www.sitemaps.org/protocol.html#index
+.. _Sitemaps: https://www.sitemaps.org/index.html
+.. _Sitemap index files: https://www.sitemaps.org/protocol.html#index
 .. _robots.txt: http://www.robotstxt.org/
 .. _TLD: https://en.wikipedia.org/wiki/Top-level_domain
-.. _Scrapyd documentation: http://scrapyd.readthedocs.org/en/latest/
+.. _Scrapyd documentation: https://scrapyd.readthedocs.io/en/latest/
